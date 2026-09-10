@@ -161,5 +161,84 @@ function exportData(){let a=document.createElement('a'),url=URL.createObjectURL(
   const originalInit=window.init;
   window.init=function(){originalInit();restore();};
 })();
+</script><script>
+/* Matematiktrappa: räknetal först, svårare steg när eleven visar säkerhet. */
+(() => {
+  const oldGeneratedQuestion = generatedQuestion;
+  const oldResetQuiz = resetQuiz;
+  const oldAnswer = answer;
+  const oldRenderQuiz = renderQuiz;
+  const levelNames = {1:'Grund',2:'Fortsättning',3:'Utmaning'};
+  const rand = (min,max) => min + Math.floor(Math.random()*(max-min+1));
+  const unique = values => [...new Set(values.map(String))];
+  function numericQuestion(q, correct, alternatives, hint, d) {
+    let answers=unique([correct,...alternatives]);
+    for(let n=1;answers.length<4;n++)answers.push(String(Number(correct)+n));
+    return randomizeQuestion({q,a:answers.slice(0,4),c:0,h:hint,d,subject:'matte',math:true});
+  }
+  function fractionQuestion(q, correct, alternatives, hint, d) {
+    return randomizeQuestion({q,a:unique([correct,...alternatives]).slice(0,4),c:0,h:hint,d,subject:'matte',math:true});
+  }
+  function mathQuestion(d=1,topic='all') {
+    const choices={
+      1:{
+        'Tal och potenser':()=>{let a=rand(12,49),b=rand(3,19),plus=Math.random()<.5,c=plus?a+b:a-b;return numericQuestion(`Räkna ut ${a} ${plus?'+':'−'} ${b}.`,c,[c+2,c-2,plus?a-b:a+b],'Räkna ett led i taget och kontrollera tecknet.',1)},
+        'Algebra':()=>{let x=rand(2,12),b=rand(2,9),sum=x+b;return numericQuestion(`Lös ekvationen x + ${b} = ${sum}.`,x,[x+1,x-1,sum],'Vilket tal måste tas bort från båda sidor?',1)},
+        'Procent':()=>{let p=[10,20,25,50][rand(0,3)],base=[40,80,120,200][rand(0,3)],c=base*p/100;return numericQuestion(`Hur mycket är ${p} % av ${base}?`,c,[base-c,c+p,base/p],'Skriv procenten som decimal eller dela upp i enkla delar.',1)},
+        'Samband och funktioner':()=>{let x=rand(1,6),k=rand(2,5),m=rand(0,6),c=k*x+m;return numericQuestion(`Funktionen är y = ${k}x + ${m}. Vad är y när x = ${x}?`,c,[c-k,c+m,k+m],'Sätt in x-värdet i formeln innan du räknar.',1)},
+        'Statistik':()=>{let a=rand(2,7),nums=[a,a+2,a+4],c=a+2;return numericQuestion(`Beräkna medelvärdet av ${nums.join(', ')}.`,c,[c-1,c+1,nums.reduce((x,y)=>x+y,0)],'Addera talen och dividera med antalet tal.',1)},
+        'Sannolikhet':()=>fractionQuestion('En vanlig tärning kastas en gång. Vad är sannolikheten att få en sexa?','1/6',['1/5','1/3','1/2'],'Det finns sex lika sannolika utfall och ett gynnsamt.',1)
+      },
+      2:{
+        'Tal och potenser':()=>{let a=rand(2,5),b=rand(2,4),c=a**b;return numericQuestion(`Räkna ut ${a}^${b}.`,c,[a*b,c-a,c+a],'Potensen betyder att basen multipliceras med sig själv.',2)},
+        'Algebra':()=>{let a=rand(2,8),x=rand(2,10),b=rand(1,12),sum=a*x+b;return numericQuestion(`Lös ekvationen ${a}x + ${b} = ${sum}.`,x,[x+1,x-1,sum-b],'Ta först bort konstanten på båda sidor, dividera sedan med koefficienten.',2)},
+        'Procent':()=>{let base=rand(4,16)*100,p=[10,15,20,25][rand(0,3)],c=base*(1+p/100);return numericQuestion(`En vara kostar ${base} kr och priset höjs med ${p} %. Vad blir det nya priset?`,c,[base*p/100,base-p*10,c+p],'Använd förändringsfaktorn 1 + procenten i decimalform.',2)},
+        'Samband och funktioner':()=>{let k=rand(2,7),m=rand(1,12),x=rand(3,9),c=k*x+m;return numericQuestion(`En kostnad beskrivs av y = ${k}x + ${m}. Beräkna kostnaden när x = ${x}.`,c,[k+x+m,k*(x+m),c-k],'Sätt in x och följ prioriteringsreglerna.',2)},
+        'Statistik':()=>{let m=rand(5,12),nums=[m-3,m,m+1,m+2,m+7],c=m+1;return numericQuestion(`Bestäm medianen för talen ${shuffle(nums).join(', ')}.`,c,[m,m+2,nums.reduce((x,y)=>x+y,0)/5],'Sortera talen först och välj talet i mitten.',2)},
+        'Sannolikhet':()=>fractionQuestion('Ett mynt kastas två gånger. Vad är sannolikheten att få krona båda gångerna?','1/4',['1/2','1/3','2/4'],'Multiplicera sannolikheterna för de två oberoende kasten.',2)
+      },
+      3:{
+        'Tal och potenser':()=>{let a=rand(2,5),c=a**3;return numericQuestion(`Förenkla och beräkna ${a}^5 ÷ ${a}^2.`,c,[a**2,a**5,a**7],'Vid division av potenser med samma bas subtraheras exponenterna.',3)},
+        'Algebra':()=>{let a=rand(2,6),x=rand(3,11),b=rand(1,5),c=rand(2,9),sum=a*(x-b)+c;return numericQuestion(`Lös ekvationen ${a}(x − ${b}) + ${c} = ${sum}.`,x,[x+b,x-b,sum-c],'Börja med att isolera parentesledet och arbeta sedan baklänges.',3)},
+        'Procent':()=>{let start=rand(5,15)*100,p=[10,20,25][rand(0,2)],c=start*(1+p/100)*(1-p/100);return numericQuestion(`Ett pris på ${start} kr höjs med ${p} % och sänks sedan med ${p} %. Vad blir slutpriset?`,Math.round(c),[start,Math.round(start*(1-p/100)),Math.round(start*(1+p/100))],'Använd två förändringsfaktorer. Förändringarna tar inte ut varandra.',3)},
+        'Samband och funktioner':()=>{let k1=rand(2,5),k2=k1+rand(1,4),m1=rand(20,50),m2=rand(2,15),c=Math.round((m1-m2)/(k2-k1)*100)/100;return numericQuestion(`Abonnemang A kostar ${k1}x + ${m1} kr och B kostar ${k2}x + ${m2} kr. Vid vilket x är kostnaderna lika?`,c,[Math.abs(m1-m2),Math.round(c+1),Math.round(c-1)],'Sätt uttrycken lika och samla x-termerna på samma sida.',3)},
+        'Statistik':()=>{let a=rand(4,9),b=a+2,c=a+5,mean=(a*2+b*3+c)/6;return numericQuestion(`Talet ${a} förekommer 2 gånger, ${b} 3 gånger och ${c} 1 gång. Vad är medelvärdet?`,Math.round(mean*100)/100,[b,Math.round((a+b+c)/3*100)/100,c],'Ta hänsyn till hur många gånger varje värde förekommer.',3)},
+        'Sannolikhet':()=>fractionQuestion('En påse innehåller 3 röda och 2 blå kulor. Två kulor dras utan återläggning. Vad är sannolikheten att båda är blå?','1/10',['2/5','1/5','2/10'],'Efter första blå kulan finns en blå av fyra kulor kvar.',3)
+      }
+    };
+    const available=choices[d]||choices[1],keys=Object.keys(available),key=available[topic]?topic:keys[rand(0,keys.length-1)];
+    return available[key]();
+  }
+  function adaptiveMathLevel() {
+    const h=Array.isArray(state.mathHistory)?state.mathHistory.slice(-12):[];
+    if(h.length<5)return 1;
+    const recent5=h.slice(-5).filter(Boolean).length;
+    if(recent5<3)return 1;
+    if(h.length<10)return recent5>=4?2:1;
+    return h.slice(-10).filter(Boolean).length>=8?3:2;
+  }
+  generatedQuestion=function(id,d=2){return id==='matte'?mathQuestion(d,'all'):oldGeneratedQuestion(id,d)};
+  adaptiveDifficulty=function(id){return id==='matte'?adaptiveMathLevel():((state.mastery[id]?.total||0)<4?1:masteryFor(id)>=78?3:masteryFor(id)<50?1:2)};
+  resetQuiz=function(){
+    if(qSubject!=='matte'||quizMode==='diagnostic')return oldResetQuiz();
+    quizMode='practice';qIndex=0;qScore=0;selectedAnswer=null;answerLocked=false;
+    const select=document.getElementById('difficulty'),chosen=Number(select.value),d=chosen||adaptiveMathLevel(),topic=document.getElementById('quizTopic').value,wanted=Number(document.getElementById('quizLength').value)||10;
+    activeQuiz=Array.from({length:wanted},()=>mathQuestion(d,topic));renderQuiz();
+  };
+  answer=function(i){
+    if(answerLocked||i===null)return;
+    const q=activeQuiz[qIndex],isMath=(q.subject||qSubject)==='matte',right=i===q.c;
+    oldAnswer(i);
+    if(isMath){state.mathHistory=[...(Array.isArray(state.mathHistory)?state.mathHistory:[]),right].slice(-30);persist();
+      if(Number(document.getElementById('difficulty').value)===0&&activeQuiz[qIndex+1])activeQuiz[qIndex+1]=mathQuestion(adaptiveMathLevel(),document.getElementById('quizTopic').value);
+    }
+  };
+  renderQuiz=function(){oldRenderQuiz();const q=activeQuiz[qIndex];if(q?.math){const line=document.querySelector('#quizBox .small.muted');if(line)line.textContent+=` · Mattesteg ${q.d}: ${levelNames[q.d]}`;}};
+  const difficulty=document.getElementById('difficulty');
+  if(difficulty){difficulty.options[0].textContent='Adaptiv · börjar lugnt';difficulty.value='0';}
+  const mathNote=document.createElement('p');mathNote.className='small muted';mathNote.textContent='Matematikens adaptiva läge börjar med korta räknetal. Efter säkra svar går det vidare till ekvationer, procent och flerstegsproblem.';
+  document.getElementById('quizControls')?.insertAdjacentElement('afterend',mathNote);
+  if(qSubject==='matte')resetQuiz();
+})();
 </script></body></html>
 
